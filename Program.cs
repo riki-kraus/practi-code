@@ -111,6 +111,40 @@ static Dictionary<string, string> getDict()
     };
     return endFiles;
 }
+
+static void addFile(string directory, string language, ref List<string> matchedFiles)
+{
+    try
+    {
+        // קבלת כל הקבצים בתיקיה הנוכחית
+        string[] files = Directory.GetFiles(directory);
+        string[] directories = Directory.GetDirectories(directory);
+
+        
+        foreach (string file in files)
+        {
+            string ext = Path.GetExtension(file);
+            if (language == "ALL" ||
+                (getDict().ContainsKey(ext) && language.Contains(getDict()[ext])) ||
+                (ext == ".h" && language.Contains("C")) ||
+                (ext == ".h" && language.Contains("C++")))
+            {
+                matchedFiles.Add(file);
+            }
+        }
+
+        // קריאה רקורסיבית לכל תתי התיקיות
+        foreach (string dir in directories)
+        {
+            addFile(dir, language, ref matchedFiles);
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error accessing directory {directory}: {ex.Message}");
+    }
+}
+
 static void languageF(string language, string path, bool note, string sortOption, bool removeLinesOption, string authorOption)
 {
     Dictionary<string, string> endFiles = getDict();
@@ -119,20 +153,11 @@ static void languageF(string language, string path, bool note, string sortOption
         validInput(language);
         string currentDirectory = Directory.GetCurrentDirectory();
         string[] files = Directory.GetFiles(currentDirectory);
-
+        string[] directories = Directory.GetDirectories(currentDirectory);
         List<string> matchedFiles = new List<string>();
         language = language.ToUpper();
-        foreach (string file in files)
-        {
-            string ext = Path.GetExtension(file);
 
-            if (language == "ALL" || (endFiles.ContainsKey(ext) && language.Contains(endFiles[ext])) || (ext == ".h" && language.Contains("C")) || (ext == ".h" && language.Contains("C++")))
-            {
-
-                matchedFiles.Add(file);
-            }
-        }
-
+        addFile(currentDirectory, language, ref matchedFiles);
         if (matchedFiles.Count == 0)
             Console.WriteLine("No files found for the specified languages.");
         else
@@ -181,6 +206,14 @@ bundleCommand.SetHandler((FileInfo output, string language, bool noteOption, str
 
 }, bundleOption, languageOption, noteOption, sortOption, removeLinesOption, authorOption);
 
+static void valiedOp(char o)
+{
+    while (o != 'y' && o != 'n')
+    {
+        Console.WriteLine("invalied option,enter again");
+        o = Char.Parse(Console.ReadLine());
+    }
+}
 createRspCommand.SetHandler(() =>
 {
 
@@ -202,24 +235,32 @@ createRspCommand.SetHandler(() =>
     string path = Console.ReadLine();
     Console.WriteLine(" you want that the source link will be written?(y/n) ");
     char o = Char.Parse(Console.ReadLine());
+    valiedOp(o);
     Console.WriteLine("enter :\n a if you want to sort by name ,\n b if yow want to sort by type\n");
     char s = Char.Parse(Console.ReadLine());
     Console.WriteLine(" you want to remove empty lines ?(y/n)");
     char r = Char.Parse(Console.ReadLine());
-    Console.WriteLine("enter the name of the author and n if you dont want it to written");
-    string nameAuthor = Console.ReadLine();
+    valiedOp(r);
+    Console.WriteLine("you want the name will be written ");
+    char n = Char.Parse(Console.ReadLine());
+    valiedOp(n);
+    string nameAuthor = "";
+    if (n == 'y')
+     Console.WriteLine("enter the name of the author ");
+     nameAuthor = Console.ReadLine();
 
    File.Create("res.rsp").Dispose();
     using (StreamWriter rspWriter = new StreamWriter("res.rsp"))
     {
-        string command = $" fib\n bundle\n --output {path}\n --language {languages}\n ";
+        string command = $" \n bundle\n --output {path}\n --language {languages}\n ";
+       
         if (o == 'y')
             command += "--note \n";
         if (s == 'b')
             command += "--sort order-by-name\n";
         if (r == 'y')
             command += "--remove-empty-lines\n ";
-        if (nameAuthor != "n")
+        if (nameAuthor != "")
             command += $"--author {nameAuthor}\n";
         rspWriter.Write( command);
         Console.WriteLine("the response file res.txt was created with succesfully ");
